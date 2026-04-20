@@ -231,13 +231,52 @@ class ATExchangerAdvanced:
     # ── power_delete ─────────────────────────────────────────────────────────
 
     def _power_delete(self, text, prefix, exceptions):
-        """접두사 포함 최상위 토큰 전체 제거, 빈 쉼표 없이 정리"""
+        """
+        최상위 레벨 쉼표 기준으로 토큰을 분리한 뒤 각 토큰을 처리합니다.
+        괄호/대괄호로 감싸인 토큰은 내부를 재분리하여
+        살릴 항목만 남기고 재조합합니다.
+        예: (@e, @f:1.2) 에서 @e 삭제, @f 예외 → (@f:1.2) 로 축소
+        """
         kept = []
         for token in self._split_top_level(text):
             stripped = token.strip()
-            if stripped and not self._contains_active_prefix(stripped, prefix, exceptions):
-                kept.append(stripped)
+            if not stripped:
+                continue
+            result = self._power_delete_token(stripped, prefix, exceptions)
+            if result is not None:
+                kept.append(result)
         return ", ".join(kept)
+
+    def _power_delete_token(self, token, prefix, exceptions):
+        """
+        단일 토큰에 대해 power_delete 처리를 수행합니다.
+        - 괄호/대괄호로 감싸인 경우: 내부를 쉼표로 재분리하여 처리.
+          내부에 남은 항목이 있으면 괄호로 재조합, 없으면 None(삭제).
+        - 일반 토큰: 활성 접두사가 있으면 None(삭제), 없으면 원문 반환.
+
+        괄호 안 공유 가중치 예시: (@e, @f:1.2)
+          → 내부 분리: [@e, @f:1.2]
+          → @e 삭제 / @f:1.2 유지(예외)
+          → 재조합: (@f:1.2)
+        """
+        for open_ch, close_ch in [('(', ')'), ('[', ']')]:
+            if token.startswith(open_ch) and token.endswith(close_ch):
+                inner = token[1:-1]
+                kept = []
+                for t in self._split_top_level(inner):
+                    s = t.strip()
+                    if not s:
+                        continue
+                    if not self._contains_active_prefix(s, prefix, exceptions):
+                        kept.append(s)
+                if not kept:
+                    return None
+                return open_ch + ", ".join(kept) + close_ch
+
+        # 일반 토큰
+        if self._contains_active_prefix(token, prefix, exceptions):
+            return None
+        return token
 
     def _contains_active_prefix(self, token, prefix, exceptions):
         """sentinel 치환 후 존재 여부로 예외 아닌 접두사 감지"""
