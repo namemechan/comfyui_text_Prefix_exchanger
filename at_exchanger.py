@@ -84,8 +84,9 @@ class ATExchanger:
         working = text
 
         # ── Step 1: additional_prompt 치환 (main 처리보다 반드시 먼저 실행) ──
+        # 태그 단위 시퀀스 매칭 → @b 검색 시 @bc 오매칭 방지
         if additional_prompt.strip():
-            working = working.replace(additional_prompt, additional_exchang)
+            working = self._apply_additional(working, additional_prompt, additional_exchang)
 
         # ── Step 2: main mode 처리 ──────────────────────────────────────────
         if mode == "delete":
@@ -166,6 +167,35 @@ class ATExchanger:
         sentinel = "\x00"
         processed = self._process(token, prefix, sentinel, exceptions)
         return sentinel in processed
+
+    # ── additional_prompt 치환 ───────────────────────────────────────────────
+
+    def _apply_additional(self, text, find_str, replace_str):
+        """
+        태그 단위 시퀀스 매칭으로 find_str → replace_str 교체합니다.
+        단순 문자열 치환과 달리 태그 경계를 인식하므로
+        @b 검색 시 @bc 가 오매칭되는 문제가 발생하지 않습니다.
+        """
+        find_tokens = [t.strip() for t in self._split_top_level(find_str) if t.strip()]
+        replace_tokens = [t.strip() for t in self._split_top_level(replace_str) if t.strip()]
+
+        if not find_tokens:
+            return text
+
+        text_tokens = [t.strip() for t in self._split_top_level(text) if t.strip()]
+        m = len(find_tokens)
+        result = []
+        i = 0
+
+        while i < len(text_tokens):
+            if text_tokens[i:i + m] == find_tokens:
+                result.extend(replace_tokens)
+                i += m
+            else:
+                result.append(text_tokens[i])
+                i += 1
+
+        return ", ".join(result)
 
     def _split_top_level(self, text):
         """

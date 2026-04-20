@@ -98,14 +98,23 @@ exceptions: @_@, @keep
 ### additional_prompt / additional_exchang
 
 main 처리(mode)보다 **반드시 먼저** 실행됩니다.  
-특정 문자열을 다른 문자열로 치환하고 싶을 때 사용합니다.
+태그 단위 시퀀스 매칭을 사용하므로 `@b`를 찾을 때 `@bc`가 오매칭되는 문제가 없습니다.  
+여러 태그를 하나의 덩어리로 찾아 교체하는 것도 가능합니다.
 
 ```
 additional_prompt: @old_tag
 additional_exchang: @new_tag
-입력: masterpiece, @old_tag, beautiful
-→ (additional 치환 후) masterpiece, @new_tag, beautiful
-→ (delete 모드 적용 후) masterpiece, new_tag, beautiful
+입력: masterpiece, @old_tag, @old_tag_extra, beautiful
+→ (additional 치환 후) masterpiece, @new_tag, @old_tag_extra, beautiful
+   ↑ @old_tag_extra 는 태그가 다르므로 매칭되지 않음
+→ (delete 모드 적용 후) masterpiece, new_tag, old_tag_extra, beautiful
+```
+
+```
+additional_prompt: @setup_a, @setup_b    ← 태그 2개를 하나의 시퀀스로 검색
+additional_exchang: @result_tag
+입력: masterpiece, @setup_a, @setup_b, beautiful
+결과: masterpiece, @result_tag, beautiful
 ```
 
 ---
@@ -127,22 +136,7 @@ additional_exchang: @new_tag
 
 ---
 
-### 추가 기능 1 — additional_prompt 개선 (태그 단위 시퀀스 매칭)
-
-기본 노드와 달리 **태그 단위로 시퀀스 매칭**을 합니다.  
-`@b`를 찾을 때 `@bc`가 잘못 매칭되는 오매칭이 발생하지 않습니다.  
-또한 여러 태그 연속을 하나의 덩어리로 찾아서 교체할 수 있습니다.
-
-```
-additional_prompt: @setup_a, @setup_b    ← 태그 2개를 하나의 시퀀스로 검색
-additional_exchang: @result_tag
-입력: masterpiece, @setup_a, @setup_b, beautiful
-결과: masterpiece, @result_tag, beautiful
-```
-
----
-
-### 추가 기능 2 — 조건부 처리 (use_condition)
+### 추가 기능 1 — 조건부 처리 (use_condition)
 
 특정 태그가 프롬프트에 존재하는지 여부에 따라 **main mode 실행 자체를 제어**합니다.
 
@@ -167,7 +161,7 @@ condition_mode: skip_if_present
 
 ---
 
-### 추가 기능 3 — 태그 추가 (use_add)
+### 추가 기능 2 — 태그 추가 (use_add)
 
 main mode 처리 이후 지정한 태그를 맨 앞 또는 맨 뒤에 추가합니다.  
 독립적인 조건부(`use_conditional_add`)를 가집니다.
@@ -191,7 +185,7 @@ add_position: front
 
 ---
 
-### 추가 기능 4 — 태그 이동 (use_move)
+### 추가 기능 3 — 태그 이동 (use_move)
 
 지정한 태그를 맨 앞 또는 맨 뒤로 이동시킵니다. 나머지 태그들의 순서는 유지됩니다.
 
@@ -210,7 +204,7 @@ move_to: front
 
 ---
 
-### 추가 기능 5 — 인접 태그 수정 (use_neighbor)
+### 추가 기능 4 — 인접 태그 수정 (use_neighbor)
 
 기준이 되는 태그를 찾고, 그 **앞 또는 뒤 인접 태그**에 텍스트를 붙입니다.
 
